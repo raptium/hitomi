@@ -18,3 +18,5 @@ pip-log.txt
 .coverage
 .tox
 
+# Debug
+example.html

@@ -144,7 +144,6 @@ class Hitomi(object):
 
     def clean_conditionally(self, node, tag):
         elements = node.findall('.//' + tag)
-        tag_length = len(elements)
 
         for e in elements:
             weight = self.get_class_weight(e)
@@ -167,7 +166,7 @@ class Hitomi(object):
                 content_length = len(e.text_content())
                 to_remove = False
 
-                if img > 0:
+                if img > p and img > 1: # div wrapper for img should not be remove
                     to_remove = True
                 elif li > p and not e.tag.lower() in ['ul', 'ol']:
                     to_remove = True
