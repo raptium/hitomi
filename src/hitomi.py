@@ -166,7 +166,7 @@ class Hitomi(object):
                 content_length = len(e.text_content())
                 to_remove = False
 
-                if img > p and img > 1: # div wrapper for img should not be remove
+                if img > p and img > 1:  # div wrapper for img should not be remove
                     to_remove = True
                 elif li > p and not e.tag.lower() in ['ul', 'ol']:
                     to_remove = True
@@ -260,6 +260,22 @@ class Hitomi(object):
                 if self.regexps['div_to_p'].search(html) is None:
                     e.tag = 'p'
                     nodes_to_score.append(e)
+                else:
+                    text = e.text
+                    if text and len(text.strip()) > 4:
+                        p_element = lxml.html.fromstring('<p>'
+                                + text.strip() + '</p>')
+                        e.text = ''
+                        e.insert(0, p_element)
+                        nodes_to_score.append(p_element)
+                    for child_e in e.getchildren():
+                        text = child_e.tail
+                        if text and len(text.strip()) > 4:
+                            p_element = lxml.html.fromstring('<p>'
+                                    + text.strip() + '</p>')
+                            child_e.tail = ''
+                            child_e.addnext(p_element)
+                            nodes_to_score.append(p_element)
 
         scores = {}
         for e in nodes_to_score:
@@ -281,9 +297,9 @@ class Hitomi(object):
                     self.init_score(grand_parent_node)
 
             score = 1
-            score = len(text.split(u'，'))  # Chinese comma
-            score = len(text.split(','))
-            score = min(3, len(text) / 100)
+            score = score + len(text.split(u'，'))  # Chinese comma
+            score = score + len(text.split(','))
+            score = score + min(3, len(text) / 100)
 
             scores[parent_node] = scores[parent_node] + score
             if grand_parent_node is not None:
@@ -306,12 +322,11 @@ class Hitomi(object):
 
         if candidate is None:
             candidate = tree
-            scores[candidate] = 0
+            scores[candidate] = self.init_score(candidate)
 
         sibling_score_threshold = max(10, scores[candidate] * 0.2)
 
         article_node = lxml.html.fromstring('<div/>')
-
         for e in candidate.getparent().iterchildren('*'):
             append = False
 
@@ -344,7 +359,14 @@ class Hitomi(object):
         return self.clean_up(html)
 
 
-if __name__ == '__main__':
+def main():
+    import sys
     hitomi = Hitomi()
-    with open('example.html', 'r') as f:
-        print hitomi.readable(f.read(), '')
+    if len(sys.argv) < 2:
+        return
+    with open(sys.argv[1], 'r') as f:
+        print hitomi.readable(f.read())
+
+
+if __name__ == '__main__':
+    main()

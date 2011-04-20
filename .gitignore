@@ -19,4 +19,5 @@ pip-log.txt
 .tox
 
 # Debug
-example.html
+samples/
+
