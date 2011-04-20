@@ -271,12 +271,34 @@ class Hitomi(object):
                     for child_e in e.getchildren():
                         text = child_e.tail
                         if text and len(text.strip()) > 4:
-                            p_element = lxml.html.fromstring('<p>'
-                                    + text.strip() + '</p>')
-                            child_e.tail = ''
-                            child_e.addnext(p_element)
-                            nodes_to_score.append(p_element)
-
+                            if child_e.tag.lower() in [
+                                'b',
+                                'i',
+                                'strong',
+                                'em',
+                                'a',
+                                'span',
+                                'del',
+                                'img',
+                                ]:
+                                pre_e = child_e.getprevious()
+                                child_e.tail = text.strip()
+                                if pre_e is not None \
+                                    and pre_e.tag.lower() == 'p':
+                                    pre_e.append(child_e)
+                                    nodes_to_score.append(pre_e)
+                                else:
+                                    p_element = \
+    lxml.html.fromstring('<p/>')
+                                    child_e.addnext(p_element)
+                                    child_e.drop_tree()
+                                    p_element.insert(0, child_e)
+                            else:
+                                p_element = lxml.html.fromstring('<p>'
+                                        + text.strip() + '</p>')
+                                child_e.tail = ''
+                                child_e.addnext(p_element)
+                                nodes_to_score.append(p_element)
         scores = {}
         for e in nodes_to_score:
             parent_node = e.getparent()
@@ -318,10 +340,8 @@ class Hitomi(object):
 
         self.content_scores = scores
 
-        # fallback to body
-
         if candidate is None:
-            candidate = tree
+            candidate = tree  # fallback to body
             scores[candidate] = self.init_score(candidate)
 
         sibling_score_threshold = max(10, scores[candidate] * 0.2)
@@ -342,7 +362,7 @@ class Hitomi(object):
             if scores.has_key(e) and scores[e] + bonus \
                 > sibling_score_threshold:
                 append = True
-            if str(e.tag).lower() == 'p':
+            if e.tag.lower() == 'p':
                 link_density = self.get_link_density(e)
                 text_length = len(e.text_content())
                 if text_length > 80 and link_density < 0.25:
@@ -351,7 +371,7 @@ class Hitomi(object):
                     append = True
 
             if append:
-                if str(e.tag).lower() not in ['p', 'div']:
+                if e.tag.lower() not in ['p', 'div']:
                     e.tag = 'div'
                 article_node.append(e)
 
