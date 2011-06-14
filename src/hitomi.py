@@ -55,7 +55,7 @@ class Hitomi(object):
     def readable(self, html, url=None):
         self.url = url
         html = self.smart_decode(html)
-        cleaner = Cleaner(page_structure=False, add_nofollow=False,
+        cleaner = Cleaner(page_structure=False, add_nofollow=True,
                           style=True, safe_attrs_only=True)
         html = cleaner.clean_html(html)
         tree = lxml.html.fromstring(html)
@@ -72,12 +72,24 @@ class Hitomi(object):
             link_length = link_length + len(e.text_content())
         return float(link_length) / text_length
 
+    def remove_whitespace(self, node):
+        for e in node.iterdescendants():
+            if e.text is not None:
+                e.text = e.text.strip()
+            if e.tail is not None:
+                e.tail = e.tail.strip()
+        if node.text is not None:
+            node.text = node.text.strip()
+        if node.tail is not None:
+            node.tail = node.tail.strip()
+
     def clean_up(self, html):
         self.kill_breaks(html)
         node = lxml.html.fromstring(html)
         self.prepare_article(node)
         if self.url:
             node.make_links_absolute(self.url)
+        self.remove_whitespace(node)
         html = lxml.html.tostring(node)
         html = self.regexps['fix_paragraph'].sub('<p', html)
         return html
@@ -310,11 +322,11 @@ class Hitomi(object):
             if text is None or len(text) < 25:
                 continue
 
-            if not scores.has_key(parent_node):
+            if not parent_node in scores:
                 scores[parent_node] = self.init_score(parent_node)
 
-            if grand_parent_node is not None \
-                and not scores.has_key(grand_parent_node):
+            if grand_parent_node is not None and not grand_parent_node \
+                in scores:
                 scores[grand_parent_node] = \
                     self.init_score(grand_parent_node)
 
@@ -359,7 +371,7 @@ class Hitomi(object):
             if candidate_class_name and class_name and class_name \
                 == candidate_class_name:
                 bonus = 0.2 * scores[candidate]
-            if scores.has_key(e) and scores[e] + bonus \
+            if e in scores and scores[e] + bonus \
                 > sibling_score_threshold:
                 append = True
             if e.tag.lower() == 'p':
